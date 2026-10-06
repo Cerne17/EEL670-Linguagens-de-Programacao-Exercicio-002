@@ -108,3 +108,85 @@ vertice_id Grafo<V, P, D>::get_id(const V& rotulo) const
     throw std::out_of_range("vertice nao encontrado no grafo");
   return iterador->second;
 }
+
+template<typename V, typename P, bool D>
+ArvoreBusca<P> Grafo<V, P, D>::exploracao_bfs(const V& fonte) const
+{
+  vertice_id id_fonte = this->get_id(fonte);
+
+  ArvoreBusca<P> resultado;
+  resultado.raiz = id_fonte;
+
+  const std::size_t n = m_vertices.size();
+
+  resultado.pai.resize(n);
+  resultado.custo.resize(n);
+
+  resultado.custo[id_fonte] = P{};
+
+  std::queue<vertice_id> fila;
+  fila.push(id_fonte);
+
+  while (!fila.empty()) {
+    vertice_id atual = fila.front();
+    fila.pop();
+
+    resultado.ordem_exploracao.push_back(atual);
+
+    for (const auto& adjacente : m_adjacencias.at(atual)) {
+      vertice_id vizinho = adjacente.first;
+
+      if (!resultado.custo[vizinho].has_value()) {
+        resultado.pai[vizinho] = atual;
+        resultado.custo[vizinho] = resultado.custo[atual].value() + P{ 1 };
+        fila.push(vizinho);
+      }
+    }
+  }
+  return resultado;
+}
+
+template<typename V, typename P, bool D>
+ArvoreBusca<P> Grafo<V, P, D>::exploracao_dfs(const V& fonte) const
+{
+  vertice_id id_fonte = this->get_id(fonte);
+
+  ArvoreBusca<P> resultado;
+  resultado.raiz = id_fonte;
+
+  const std::size_t n = m_vertices.size();
+
+  resultado.pai.resize(n);
+  resultado.custo.resize(n);
+
+  resultado.custo[id_fonte] = P{};
+
+  std::vector<bool> visitado(n, false);
+
+  // cada item é (vértice, pai): o vértice só é marcado ao sair da pilha,
+  // senão todos os vizinhos ganhariam o mesmo pai e a busca viraria uma BFS
+  std::stack<std::pair<vertice_id, std::optional<vertice_id>>> pilha;
+  pilha.push({ id_fonte, std::nullopt });
+
+  while (!pilha.empty()) {
+    auto [atual, pai] = pilha.top();
+    pilha.pop();
+
+    if (visitado[atual]) // empilhado mais de uma vez; já explorado
+      continue;
+    visitado[atual] = true;
+
+    if (pai) {
+      resultado.pai[atual] = pai;
+      resultado.custo[atual] = resultado.custo[*pai].value() + P{ 1 };
+    }
+    resultado.ordem_exploracao.push_back(atual);
+
+    // empilha de trás para frente: o primeiro vizinho sai primeiro
+    const auto& vizinhos = m_adjacencias.at(atual);
+    for (auto it = vizinhos.rbegin(); it != vizinhos.rend(); ++it)
+      if (!visitado[it->first])
+        pilha.push({ it->first, atual });
+  }
+  return resultado;
+}

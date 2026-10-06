@@ -47,6 +47,12 @@ public:
 private:
   // registra um vertice em todos membros privados relevantes
   void cria_vertice(const tipo_vertice& rotulo);
+
+public:
+  /* ---- Algoritmos ---- */
+  ArvoreBusca<tipo_peso> exploracao_bfs(const tipo_vertice& fonte) const;
+  ArvoreBusca<tipo_peso> exploracao_dfs(const tipo_vertice& fonte) const;
+  /* ---- Algoritmos ---- */
 };
 
 // templates precisam da implementação
