@@ -1,0 +1,8 @@
+BasedOnStyle: Mozilla
+IndentWidth: 2
+ColumnLimit: 80
+InsertBraces: true
+AllowShortFunctionsOnASingleLine: None
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+SeparateDefinitionBlocks: Always
