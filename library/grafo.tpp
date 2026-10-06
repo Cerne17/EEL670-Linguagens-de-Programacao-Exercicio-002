@@ -339,3 +339,54 @@ FlorestaMST<P> Grafo<V, P, D>::kruskal() const
 
   return floresta;
 }
+
+template<typename V, typename P, bool D>
+ArvoreBusca<P> Grafo<V, P, D>::dijkstra(const V& fonte) const
+{
+  vertice_id id_fonte = this->get_id(fonte);
+
+  ArvoreBusca<P> resultado;
+  resultado.raiz = id_fonte;
+
+  const std::size_t n = m_vertices.size();
+
+  resultado.pai.resize(n);
+  resultado.custo.resize(n);
+
+  using tipo_fila = std::pair<P, vertice_id>;
+
+  std::
+    priority_queue<tipo_fila, std::vector<tipo_fila>, std::greater<tipo_fila>>
+      fila;
+
+  resultado.custo[id_fonte] = P{};
+
+  fila.emplace(P{}, id_fonte);
+
+  while (!fila.empty()) {
+    auto [custo_atual, atual] = fila.top();
+    fila.pop();
+
+    // já tem caminho mais barato até o vertice atual -> ignora este caminho
+    if (resultado.custo[atual].has_value() &&
+        custo_atual > resultado.custo[atual].value())
+      continue;
+
+    resultado.ordem_exploracao.push_back(atual);
+
+    for (const auto& [vizinho, peso] : m_adjacencias.at(atual)) {
+
+      P novo_custo = custo_atual + peso;
+
+      if (!resultado.custo[vizinho].has_value() ||
+          novo_custo < resultado.custo[vizinho].value()) {
+
+        resultado.custo[vizinho] = novo_custo;
+        resultado.pai[vizinho] = atual;
+
+        fila.emplace(novo_custo, vizinho);
+      }
+    }
+  }
+  return resultado;
+}

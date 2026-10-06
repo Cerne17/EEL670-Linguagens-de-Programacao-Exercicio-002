@@ -376,3 +376,67 @@ TESTE(mst_grafo_vazio)
   VERIFICA_PROXIMO(g.prim().custo_total, 0.0);
   VERIFICA_PROXIMO(g.kruskal().custo_total, 0.0);
 }
+
+// ---------- Dijkstra ----------
+
+TESTE(dijkstra_grafo_1)
+{
+  GrafoND g = grafo_1();
+  Arvore arv = g.dijkstra("A");
+  verifica_arvore_valida(g, arv);
+
+  // A-B direto custa 2.2, igual a A-C-B (1.2 + 1.0): só o custo é fixo
+  VERIFICA_PROXIMO(custo_de(arv, id_de(g, "B")), 2.2);
+  VERIFICA_PROXIMO(custo_de(arv, id_de(g, "C")), 1.2);
+  VERIFICA_PROXIMO(custo_de(arv, id_de(g, "D")), 4.3);
+  VERIFICA_IGUAL(arv.pai.at(id_de(g, "C")), id_de(g, "A"));
+  VERIFICA_IGUAL(arv.pai.at(id_de(g, "D")), id_de(g, "C"));
+}
+
+TESTE(dijkstra_prefere_caminho_mais_barato_ao_mais_curto)
+{
+  // A-C direto custa 5; A-B-C custa 2 (uma BFS escolheria A-C)
+  GrafoND g;
+  g.adiciona_aresta("A", "B", 1);
+  g.adiciona_aresta("B", "C", 1);
+  g.adiciona_aresta("A", "C", 5);
+  Arvore arv = g.dijkstra("A");
+  VERIFICA_PROXIMO(custo_de(arv, id_de(g, "C")), 2.0);
+  VERIFICA_IGUAL(arv.pai.at(id_de(g, "C")), id_de(g, "B"));
+}
+
+TESTE(dijkstra_explora_em_ordem_de_custo)
+{
+  GrafoND g = grafo_6();
+  Arvore arv = g.dijkstra("A");
+  verifica_arvore_valida(g, arv);
+  for (std::size_t i = 1; i < arv.ordem_exploracao.size(); ++i)
+    VERIFICA(custo_de(arv, arv.ordem_exploracao[i - 1]) <=
+             custo_de(arv, arv.ordem_exploracao[i]));
+}
+
+TESTE(dijkstra_nao_alcanca_outra_componente)
+{
+  GrafoND g = desconexo();
+  Arvore arv = g.dijkstra("A");
+  verifica_arvore_valida(g, arv);
+  VERIFICA(!arv.custo.at(id_de(g, "C")).has_value());
+}
+
+TESTE(dijkstra_direcionado_segue_sentido_das_arestas)
+{
+  // A -> B -> C -> A: de B, chegar em A exige dar a volta
+  GrafoD g;
+  g.adiciona_aresta("A", "B", 1);
+  g.adiciona_aresta("B", "C", 1);
+  g.adiciona_aresta("C", "A", 1);
+  Arvore arv = g.dijkstra("B");
+  verifica_arvore_valida(g, arv);
+  VERIFICA_PROXIMO(custo_de(arv, id_de(g, "A")), 2.0);
+}
+
+TESTE(dijkstra_fonte_inexistente_lanca)
+{
+  GrafoND g = grafo_1();
+  VERIFICA_LANCA(g.dijkstra("Z"), std::out_of_range);
+}

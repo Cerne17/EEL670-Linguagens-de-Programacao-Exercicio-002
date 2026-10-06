@@ -57,6 +57,8 @@ public:
 
   FlorestaMST<tipo_peso> prim() const;
   FlorestaMST<tipo_peso> kruskal() const;
+
+  ArvoreBusca<tipo_peso> dijkstra(const tipo_vertice& fonte) const;
   /* ---- Algoritmos ---- */
 };
 
