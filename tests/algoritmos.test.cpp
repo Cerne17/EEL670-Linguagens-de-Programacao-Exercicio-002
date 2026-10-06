@@ -266,3 +266,113 @@ TESTE(componentes_grafo_desconexo)
   };
   VERIFICA(normaliza(cc.componentes) == normaliza(esperado));
 }
+
+// ---------- árvore geradora mínima (Prim e Kruskal) ----------
+
+// arestas da MST como pares (menor id, maior id), ordenados
+static std::vector<std::pair<std::size_t, std::size_t>> pares(
+  const MST<double>& mst)
+{
+  std::vector<std::pair<std::size_t, std::size_t>> resultado;
+  for (const auto& a : mst.arestas)
+    resultado.push_back({ std::min(a.get_origem(), a.get_destino()),
+                          std::max(a.get_origem(), a.get_destino()) });
+  std::sort(resultado.begin(), resultado.end());
+  return resultado;
+}
+
+static double soma_pesos(const MST<double>& mst)
+{
+  double soma = 0;
+  for (const auto& a : mst.arestas)
+    soma += a.get_peso();
+  return soma;
+}
+
+// exemplo clássico com 6 vértices e MST de custo 14
+static GrafoND grafo_6()
+{
+  GrafoND g;
+  g.adiciona_aresta("A", "B", 4);
+  g.adiciona_aresta("A", "C", 4);
+  g.adiciona_aresta("B", "C", 2);
+  g.adiciona_aresta("C", "D", 3);
+  g.adiciona_aresta("C", "F", 4);
+  g.adiciona_aresta("C", "E", 2);
+  g.adiciona_aresta("D", "F", 3);
+  g.adiciona_aresta("E", "F", 3);
+  return g;
+}
+
+// mesmas verificações para os dois algoritmos
+static void verifica_mst_grafo_1(const GrafoND& g, const FlorestaMST<double>& f)
+{
+  VERIFICA_IGUAL(f.arvores.size(), 1u);
+  VERIFICA_PROXIMO(f.custo_total, 5.3);
+
+  const MST<double>& mst = f.arvores.at(0);
+  VERIFICA_PROXIMO(mst.custo_total, 5.3);
+  VERIFICA_PROXIMO(soma_pesos(mst), 5.3);
+
+  std::size_t a = id_de(g, "A"), b = id_de(g, "B");
+  std::size_t c = id_de(g, "C"), d = id_de(g, "D");
+  std::vector<std::pair<std::size_t, std::size_t>> esperado = {
+    { std::min(a, c), std::max(a, c) },
+    { std::min(b, c), std::max(b, c) },
+    { std::min(c, d), std::max(c, d) },
+  };
+  std::sort(esperado.begin(), esperado.end());
+  VERIFICA(pares(mst) == esperado);
+}
+
+static void verifica_floresta_desconexo(const FlorestaMST<double>& f)
+{
+  VERIFICA_IGUAL(f.arvores.size(), 2u);
+  VERIFICA_PROXIMO(f.custo_total, 3.0);
+  for (const auto& mst : f.arvores) {
+    VERIFICA_IGUAL(mst.arestas.size(), 1u);
+    VERIFICA_PROXIMO(mst.custo_total, soma_pesos(mst));
+  }
+}
+
+TESTE(prim_grafo_1)
+{
+  GrafoND g = grafo_1();
+  verifica_mst_grafo_1(g, g.prim());
+}
+
+TESTE(kruskal_grafo_1)
+{
+  GrafoND g = grafo_1();
+  verifica_mst_grafo_1(g, g.kruskal());
+}
+
+TESTE(prim_e_kruskal_tem_mesmo_custo)
+{
+  GrafoND g = grafo_6();
+  FlorestaMST<double> p = g.prim();
+  FlorestaMST<double> k = g.kruskal();
+  VERIFICA_PROXIMO(p.custo_total, 14.0);
+  VERIFICA_PROXIMO(k.custo_total, 14.0);
+  VERIFICA_IGUAL(p.arvores.at(0).arestas.size(), 5u);
+  VERIFICA_IGUAL(k.arvores.at(0).arestas.size(), 5u);
+}
+
+TESTE(prim_grafo_desconexo_gera_floresta)
+{
+  verifica_floresta_desconexo(desconexo().prim());
+}
+
+TESTE(kruskal_grafo_desconexo_gera_floresta)
+{
+  verifica_floresta_desconexo(desconexo().kruskal());
+}
+
+TESTE(mst_grafo_vazio)
+{
+  GrafoND g;
+  VERIFICA(g.prim().arvores.empty());
+  VERIFICA(g.kruskal().arvores.empty());
+  VERIFICA_PROXIMO(g.prim().custo_total, 0.0);
+  VERIFICA_PROXIMO(g.kruskal().custo_total, 0.0);
+}

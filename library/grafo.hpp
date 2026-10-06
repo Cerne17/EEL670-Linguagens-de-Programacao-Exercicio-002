@@ -54,6 +54,9 @@ public:
   ArvoreBusca<tipo_peso> exploracao_dfs(const tipo_vertice& fonte) const;
 
   ComponentesConexas<vertice_id> get_componentes_conexas() const;
+
+  FlorestaMST<tipo_peso> prim() const;
+  FlorestaMST<tipo_peso> kruskal() const;
   /* ---- Algoritmos ---- */
 };
 

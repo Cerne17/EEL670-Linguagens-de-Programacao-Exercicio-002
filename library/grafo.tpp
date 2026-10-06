@@ -228,3 +228,114 @@ ComponentesConexas<vertice_id> Grafo<V, P, D>::get_componentes_conexas() const
   }
   return resultado;
 }
+
+template<typename V, typename P, bool D>
+FlorestaMST<P> Grafo<V, P, D>::prim() const
+{
+  static_assert(!D, "Prim requer um grafo nao direcionado");
+
+  FlorestaMST<P> floresta;
+
+  std::vector<bool> visitado(m_vertices.size(), false);
+
+  using entrada = std::tuple<P, vertice_id, vertice_id>;
+
+  for (vertice_id inicio = 0; inicio < m_vertices.size(); ++inicio) {
+
+    if (visitado[inicio])
+      continue;
+
+    MST<P> arvore;
+
+    std::priority_queue<entrada, std::vector<entrada>, std::greater<entrada>>
+      fila;
+
+    visitado[inicio] = true;
+
+    for (const auto& [vizinho, peso] : m_adjacencias.at(inicio)) {
+      fila.emplace(peso, inicio, vizinho);
+    }
+
+    while (!fila.empty()) {
+
+      auto [peso, origem, destino] = fila.top();
+      fila.pop();
+
+      if (visitado[destino])
+        continue;
+
+      visitado[destino] = true;
+
+      arvore.arestas.emplace_back(origem, destino, peso);
+      arvore.custo_total += peso;
+      floresta.custo_total += peso;
+
+      for (const auto& [vizinho, peso_aresta] : m_adjacencias.at(destino)) {
+
+        if (!visitado[vizinho]) {
+          fila.emplace(peso_aresta, destino, vizinho);
+        }
+      }
+    }
+
+    floresta.arvores.push_back(std::move(arvore));
+  }
+
+  return floresta;
+}
+
+template<typename V, typename P, bool D>
+FlorestaMST<P> Grafo<V, P, D>::kruskal() const
+{
+  static_assert(!D, "Kruskal requer um grafo nao direcionado");
+
+  FlorestaMST<P> floresta;
+
+  std::vector<Aresta<P>> arestas_ordenadas = m_arestas;
+
+  std::sort(
+    arestas_ordenadas.begin(),
+    arestas_ordenadas.end(),
+    [](const auto& a, const auto& b) { return a.get_peso() < b.get_peso(); });
+
+  DisjointSet dsu(m_vertices.size());
+
+  std::vector<Aresta<P>> escolhidas;
+
+  for (const auto& aresta : arestas_ordenadas) {
+
+    vertice_id u = aresta.get_origem();
+    vertice_id v = aresta.get_destino();
+
+    if (dsu.unite(u, v)) {
+      escolhidas.push_back(aresta);
+      floresta.custo_total += aresta.get_peso();
+    }
+  }
+
+  // separar as arestas escolhidas por componente
+  std::unordered_map<vertice_id, MST<P>> componentes;
+
+  for (const auto& aresta : escolhidas) {
+
+    vertice_id raiz = dsu.find(aresta.get_origem());
+
+    componentes[raiz].arestas.push_back(aresta);
+    componentes[raiz].custo_total += aresta.get_peso();
+  }
+
+  // inclui também componentes formadas por vértices isolados
+  for (vertice_id v = 0; v < m_vertices.size(); ++v) {
+    vertice_id raiz = dsu.find(v);
+
+    if (!componentes.contains(raiz)) {
+      componentes.emplace(raiz, MST<P>{});
+    }
+  }
+
+  for (auto& [_, arvore] : componentes) {
+    floresta.arvores.push_back(std::move(arvore));
+  }
+
+  return floresta;
+}
