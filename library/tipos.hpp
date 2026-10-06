@@ -17,3 +17,11 @@ struct ArvoreBusca
   std::vector<std::optional<P>> custo;
   std::vector<vertice_id> ordem_exploracao;
 };
+
+template<typename ID>
+struct ComponentesConexas
+{
+  std::vector<std::vector<ID>> componentes;
+
+  std::size_t quantidade() const { return componentes.size(); };
+};

@@ -190,3 +190,41 @@ ArvoreBusca<P> Grafo<V, P, D>::exploracao_dfs(const V& fonte) const
   }
   return resultado;
 }
+
+template<typename V, typename P, bool D>
+ComponentesConexas<vertice_id> Grafo<V, P, D>::get_componentes_conexas() const
+{
+  static_assert(!D, "get_componentes_conexas() requer grafo nao direcionado");
+
+  ComponentesConexas<vertice_id> resultado;
+  std::vector<bool> visitado(m_vertices.size(), false);
+
+  for (vertice_id inicio = 0; inicio < m_vertices.size(); inicio++) {
+    if (visitado[inicio])
+      continue;
+
+    std::vector<vertice_id> componente;
+    std::queue<vertice_id> fila;
+
+    fila.push(inicio);
+    visitado[inicio] = true;
+
+    while (!fila.empty()) {
+      vertice_id atual = fila.front();
+      fila.pop();
+
+      componente.push_back(atual);
+
+      for (const auto& adjacente : m_adjacencias.at(atual)) {
+        vertice_id vizinho = adjacente.first;
+
+        if (!visitado[vizinho]) {
+          visitado[vizinho] = true;
+          fila.push(vizinho);
+        }
+      }
+    }
+    resultado.componentes.push_back(componente);
+  }
+  return resultado;
+}

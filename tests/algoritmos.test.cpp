@@ -225,3 +225,44 @@ TESTE(dfs_fonte_inexistente_lanca)
   GrafoND g = grafo_1();
   VERIFICA_LANCA(g.exploracao_dfs("Z"), std::out_of_range);
 }
+
+// ---------- componentes conexas ----------
+
+// ordena cada componente e a lista, para comparar sem depender da ordem
+static std::vector<std::vector<std::size_t>> normaliza(
+  std::vector<std::vector<std::size_t>> componentes)
+{
+  for (auto& c : componentes)
+    std::sort(c.begin(), c.end());
+  std::sort(componentes.begin(), componentes.end());
+  return componentes;
+}
+
+TESTE(componentes_grafo_vazio)
+{
+  GrafoND g;
+  VERIFICA_IGUAL(g.get_componentes_conexas().quantidade(), 0u);
+}
+
+TESTE(componentes_grafo_conexo_tem_uma)
+{
+  GrafoND g = grafo_1();
+  auto cc = g.get_componentes_conexas();
+  VERIFICA_IGUAL(cc.quantidade(), 1u);
+  VERIFICA_IGUAL(cc.componentes.at(0).size(), 4u);
+}
+
+TESTE(componentes_grafo_desconexo)
+{
+  GrafoND g = desconexo();
+  g.adiciona_aresta("E", "F");
+  auto cc = g.get_componentes_conexas();
+  VERIFICA_IGUAL(cc.quantidade(), 3u);
+
+  std::vector<std::vector<std::size_t>> esperado = {
+    { id_de(g, "A"), id_de(g, "B") },
+    { id_de(g, "C"), id_de(g, "D") },
+    { id_de(g, "E"), id_de(g, "F") },
+  };
+  VERIFICA(normaliza(cc.componentes) == normaliza(esperado));
+}
