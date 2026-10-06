@@ -176,6 +176,17 @@ int main()
   menu.adiciona_opcao("Centralidades de proximidade",
                       [&grafo]() { imprime_centralidades(grafo); });
 
+  /*
+   * 12. Visualizacao
+   */
+  menu.adiciona_opcao("Visualizar grafo", [&grafo]() {
+    std::cout << "Desenho (vertices em circulo, peso no meio da aresta):\n\n";
+    imprime_desenho_grafo(grafo);
+
+    std::cout << "\nMatriz de adjacencia (. = sem aresta):\n";
+    imprime_matriz_adjacencia(grafo);
+  });
+
   menu.executa();
 
   return 0;

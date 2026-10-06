@@ -6,9 +6,11 @@
 #include "texto.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <numbers>
 #include <optional>
 #include <sstream>
 #include <stdexcept>
@@ -38,6 +40,36 @@ inline std::string junta(const std::vector<std::string>& partes,
     resultado += partes[i];
   }
   return resultado;
+}
+
+// versão curta de um número para o desenho: 2.00 -> "2", 1.50 -> "1.5"
+template<typename T>
+std::string formata_compacto(const T& valor)
+{
+  std::string texto = formata(valor);
+  if constexpr (std::is_floating_point_v<T>) {
+    texto.erase(texto.find_last_not_of('0') + 1);
+    if (!texto.empty() && texto.back() == '.')
+      texto.pop_back();
+  }
+  return texto;
+}
+
+// caractere que melhor representa uma reta com deslocamento (dx, dy);
+// dy cresce para baixo, e um caractere é ~2x mais alto que largo
+inline char caractere_da_reta(int dx, int dy)
+{
+  if (dy == 0)
+    return '-';
+  if (dx == 0)
+    return '|';
+
+  double inclinacao = 2.0 * std::abs(dy) / std::abs(dx);
+  if (inclinacao < 0.5)
+    return '-';
+  if (inclinacao > 3.0)
+    return '|';
+  return (dx > 0) == (dy > 0) ? '\\' : '/';
 }
 
 // imprime os descendentes de `v` no estilo do comando `tree`;
@@ -407,4 +439,195 @@ std::optional<V> escolhe_vertice(const Grafo<V, P, D>& grafo,
 
     std::cout << "Vertice invalido: \"" << linha << "\"\n";
   }
+}
+
+template<typename V, typename P, bool D>
+void imprime_desenho_grafo(const Grafo<V, P, D>& grafo)
+{
+  const std::size_t n = grafo.get_numero_vertices();
+
+  if (n == 0) {
+    std::cout << "Grafo vazio.\n";
+    return;
+  }
+
+  constexpr std::size_t limite = 20;
+  if (n > limite) {
+    std::cout << "Desenho disponivel para ate " << limite
+              << " vertices (este grafo tem " << n << ").\n";
+    return;
+  }
+
+  constexpr int largura = 78;
+  constexpr int altura = 23;
+
+  // o que ocupa cada célula decide quem pode sobrescrever quem:
+  // rótulos ganham de pesos, que ganham de arestas
+  enum class Celula
+  {
+    vazia,
+    aresta,
+    peso,
+    rotulo
+  };
+
+  std::vector<std::string> tela(altura, std::string(largura, ' '));
+  std::vector<std::vector<Celula>> ocupacao(
+    altura, std::vector<Celula>(largura, Celula::vazia));
+
+  std::vector<std::string> rotulos;
+  std::size_t maior_rotulo = 0;
+  for (vertice_id v = 0; v < n; ++v) {
+    rotulos.push_back(formata(grafo.get_rotulo(v)));
+    maior_rotulo = std::max(maior_rotulo, rotulos.back().size());
+  }
+
+  // vértices num círculo; o raio horizontal é ~2x o vertical para
+  // compensar o formato dos caracteres
+  const double cx = (largura - 1) / 2.0;
+  const double cy = (altura - 1) / 2.0;
+  const double ry = cy - 1;
+  const double rx = std::min(cx - maior_rotulo / 2.0 - 1, ry * 2.2);
+
+  std::vector<int> px(n), py(n);
+  for (std::size_t i = 0; i < n; ++i) {
+    double angulo = -std::numbers::pi / 2 + 2 * std::numbers::pi * i / n;
+    px[i] = static_cast<int>(std::lround(cx + rx * std::cos(angulo)));
+    py[i] = static_cast<int>(std::lround(cy + ry * std::sin(angulo)));
+  }
+
+  auto dentro = [&](int x, int y) {
+    return x >= 0 && x < largura && y >= 0 && y < altura;
+  };
+
+  // arestas, com o algoritmo de Bresenham
+  auto desenha_reta = [&](int x0, int y0, int x1, int y1) {
+    const char c = caractere_da_reta(x1 - x0, y1 - y0);
+    const int xa = x0, ya = y0, xb = x1, yb = y1;
+
+    // perto dos vértices várias arestas se encontram: ali não marca '+'
+    auto perto_da_ponta = [&](int x, int y) {
+      return (std::abs(x - xa) <= 1 && std::abs(y - ya) <= 1) ||
+             (std::abs(x - xb) <= 1 && std::abs(y - yb) <= 1);
+    };
+    const int dx = std::abs(x1 - x0), sx = x0 < x1 ? 1 : -1;
+    const int dy = -std::abs(y1 - y0), sy = y0 < y1 ? 1 : -1;
+    int erro = dx + dy;
+
+    while (true) {
+      if (dentro(x0, y0)) {
+        bool cruzamento = ocupacao[y0][x0] == Celula::aresta &&
+                          tela[y0][x0] != c && !perto_da_ponta(x0, y0);
+        tela[y0][x0] = cruzamento ? '+' : c;
+        ocupacao[y0][x0] = Celula::aresta;
+      }
+      if (x0 == x1 && y0 == y1)
+        break;
+      int e2 = 2 * erro;
+      if (e2 >= dy) {
+        erro += dy;
+        x0 += sx;
+      }
+      if (e2 <= dx) {
+        erro += dx;
+        y0 += sy;
+      }
+    }
+  };
+
+  struct Ligacao
+  {
+    vertice_id u, v;
+    P peso;
+  };
+  std::vector<Ligacao> ligacoes;
+
+  for (vertice_id u = 0; u < n; ++u)
+    for (const auto& [v, peso] : grafo.lista_vizinhos(u))
+      if (v != u && (D || u < v)) // não direcionado: cada aresta uma vez
+        ligacoes.push_back({ u, v, peso });
+
+  for (const Ligacao& l : ligacoes)
+    desenha_reta(px[l.u], py[l.u], px[l.v], py[l.v]);
+
+  // pesos no meio de cada aresta, só onde não cobrem outro peso
+  for (const Ligacao& l : ligacoes) {
+    std::string texto = formata_compacto(l.peso);
+    int y = (py[l.u] + py[l.v]) / 2;
+    int x = (px[l.u] + px[l.v]) / 2 - static_cast<int>(texto.size()) / 2;
+
+    bool cabe = true;
+    for (std::size_t k = 0; k < texto.size(); ++k)
+      if (!dentro(x + k, y) || ocupacao[y][x + k] == Celula::peso)
+        cabe = false;
+
+    if (cabe)
+      for (std::size_t k = 0; k < texto.size(); ++k) {
+        tela[y][x + k] = texto[k];
+        ocupacao[y][x + k] = Celula::peso;
+      }
+  }
+
+  // rótulos por cima de tudo, centralizados na posição do vértice
+  for (std::size_t i = 0; i < n; ++i) {
+    int tamanho = static_cast<int>(rotulos[i].size());
+    int x = std::clamp(px[i] - tamanho / 2, 0, std::max(0, largura - tamanho));
+    for (int k = 0; k < tamanho && x + k < largura; ++k) {
+      tela[py[i]][x + k] = rotulos[i][k];
+      ocupacao[py[i]][x + k] = Celula::rotulo;
+    }
+  }
+
+  // corta espaços à direita e linhas vazias no topo e no fim
+  for (std::string& linha : tela)
+    linha.erase(linha.find_last_not_of(' ') + 1);
+  while (!tela.empty() && tela.back().empty())
+    tela.pop_back();
+  std::size_t inicio = 0;
+  while (inicio < tela.size() && tela[inicio].empty())
+    ++inicio;
+
+  for (std::size_t y = inicio; y < tela.size(); ++y)
+    std::cout << ' ' << tela[y] << '\n';
+
+  if (D)
+    std::cout << "\n(o desenho nao indica o sentido das arestas)\n";
+}
+
+template<typename V, typename P, bool D>
+void imprime_matriz_adjacencia(const Grafo<V, P, D>& grafo)
+{
+  const std::size_t n = grafo.get_numero_vertices();
+
+  if (n == 0) {
+    std::cout << "Grafo vazio.\n";
+    return;
+  }
+
+  constexpr std::size_t limite = 15;
+  if (n > limite) {
+    std::cout << "Matriz disponivel para ate " << limite
+              << " vertices (este grafo tem " << n << ").\n";
+    return;
+  }
+
+  std::vector<Tabela::Coluna> colunas{ { "" } };
+  for (vertice_id v = 0; v < n; ++v)
+    colunas.push_back(
+      { formata(grafo.get_rotulo(v)), Tabela::Alinhamento::direita });
+
+  Tabela tabela(colunas);
+
+  for (vertice_id u = 0; u < n; ++u) {
+    std::vector<std::string> linha(n + 1, ".");
+    linha[0] = formata(grafo.get_rotulo(u));
+    linha[u + 1] = "-";
+
+    for (const auto& [v, peso] : grafo.lista_vizinhos(u))
+      linha[v + 1] = formata_compacto(peso);
+
+    tabela.adiciona_linha(linha);
+  }
+
+  tabela.imprime();
 }

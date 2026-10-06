@@ -31,6 +31,14 @@ void imprime_arvore_busca(const Grafo<V, P, D>& grafo,
                           const ArvoreBusca<P>& arvore,
                           int casas_custo = 2);
 
+// desenho em ASCII com os vértices num círculo (até 20 vértices)
+template<typename V, typename P, bool D>
+void imprime_desenho_grafo(const Grafo<V, P, D>& grafo);
+
+// matriz com o peso de cada aresta (até 15 vértices)
+template<typename V, typename P, bool D>
+void imprime_matriz_adjacencia(const Grafo<V, P, D>& grafo);
+
 // lista os vértices numerados e pede um, por número ou por nome;
 // nullopt se o grafo estiver vazio ou o usuário escolher voltar
 template<typename V, typename P, bool D>
