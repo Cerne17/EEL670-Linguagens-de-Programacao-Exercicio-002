@@ -390,3 +390,43 @@ ArvoreBusca<P> Grafo<V, P, D>::dijkstra(const V& fonte) const
   }
   return resultado;
 }
+
+template<typename V, typename P, bool D>
+double Grafo<V, P, D>::computa_centralidade(const V& fonte) const
+{
+  auto resultado = this->dijkstra(fonte);
+
+  double soma = 0.0f;
+
+  for (const auto& custo : resultado.custo) {
+    if (custo.has_value() && custo != P{}) {
+      soma += static_cast<double>(custo.value());
+    }
+  }
+
+  if (soma == 0.0f)
+    return 0.0f;
+
+  return 1.0f / soma;
+}
+
+template<typename V, typename P, bool D>
+std::vector<std::pair<vertice_id, double>>
+Grafo<V, P, D>::computa_centralidades() const
+{
+  std::vector<std::pair<vertice_id, double>> resultado;
+
+  resultado.reserve(m_vertices.size());
+
+  for (vertice_id v = 0; v < m_vertices.size(); ++v) {
+    double centralidade = this->computa_centralidade(this->get_rotulo(v));
+
+    resultado.emplace_back(v, centralidade);
+  }
+
+  std::sort(resultado.begin(),
+            resultado.end(),
+            [](const auto& a, const auto& b) { return a.second > b.second; });
+
+  return resultado;
+}

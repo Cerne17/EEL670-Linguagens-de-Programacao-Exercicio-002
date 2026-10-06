@@ -59,6 +59,9 @@ public:
   FlorestaMST<tipo_peso> kruskal() const;
 
   ArvoreBusca<tipo_peso> dijkstra(const tipo_vertice& fonte) const;
+
+  double computa_centralidade(const tipo_vertice& fonte) const;
+  std::vector<std::pair<vertice_id, double>> computa_centralidades() const;
   /* ---- Algoritmos ---- */
 };
 

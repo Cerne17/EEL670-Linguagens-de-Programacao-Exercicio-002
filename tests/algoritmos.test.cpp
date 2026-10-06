@@ -440,3 +440,49 @@ TESTE(dijkstra_fonte_inexistente_lanca)
   GrafoND g = grafo_1();
   VERIFICA_LANCA(g.dijkstra("Z"), std::out_of_range);
 }
+
+// ---------- centralidade de proximidade ----------
+// C(v) = 1 / soma das menores distâncias de v aos demais
+
+TESTE(centralidade_estrela)
+{
+  //   B
+  //   |
+  //   A - C
+  //   |
+  //   D
+  GrafoND g;
+  g.adiciona_aresta("A", "B");
+  g.adiciona_aresta("A", "C");
+  g.adiciona_aresta("A", "D");
+  VERIFICA_PROXIMO(g.computa_centralidade("A"), 1.0 / 3.0); // 1 / (1+1+1)
+  VERIFICA_PROXIMO(g.computa_centralidade("B"), 1.0 / 5.0); // 1 / (1+2+2)
+}
+
+TESTE(centralidade_grafo_1)
+{
+  // de A: C = 1.2, B = 2.2, D = 4.3
+  GrafoND g = grafo_1();
+  VERIFICA_PROXIMO(g.computa_centralidade("A"), 1.0 / 7.7);
+}
+
+TESTE(centralidades_cobre_todos_os_vertices)
+{
+  GrafoND g = grafo_1();
+  auto todas = g.computa_centralidades();
+  VERIFICA_IGUAL(todas.size(), g.get_numero_vertices());
+
+  std::vector<bool> visto(g.get_numero_vertices(), false);
+  for (const auto& par : todas) {
+    VERIFICA(!visto.at(par.first));
+    visto.at(par.first) = true;
+    VERIFICA_PROXIMO(par.second,
+                     g.computa_centralidade(g.get_rotulo(par.first)));
+  }
+}
+
+TESTE(centralidade_fonte_inexistente_lanca)
+{
+  GrafoND g = grafo_1();
+  VERIFICA_LANCA(g.computa_centralidade("Z"), std::out_of_range);
+}
